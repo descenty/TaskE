@@ -19,6 +19,7 @@ class TkinterManager:
         self.currency_combo2 = None
         self.currency1_name: StringVar = None
         self.currency2_name: StringVar = None
+        self.currency3_name: StringVar = None
         self.input_text: StringVar = None
         self.output_text: StringVar = None
         self.currencies: StringVar = currencies
@@ -43,6 +44,7 @@ class TkinterManager:
         tab_control.add(self.tab2, text='Динамика курса')
         tab_control.pack(expand=1, fill='both')
 
+        # TAB 1
         # ADD COMPONENTS
         currency_combo1 = ttk.Combobox(self.tab1, width=25, textvariable=self.currency1_name)
         currency_combo1['values'] = [currency.name for currency in self.currencies]
@@ -52,14 +54,23 @@ class TkinterManager:
         currency_combo2['values'] = [currency.name for currency in self.currencies]
         currency_combo2.grid(column=0, row=1)
 
-        input_box = Entry(self.tab1, textvariable=self.input_text)
-        input_box.grid(column=1, row=0)
+        input_box1 = Entry(self.tab1, textvariable=self.input_text)
+        input_box1.grid(column=1, row=0)
 
         output_lbl = Label(self.tab1, textvariable=self.output_text)
         output_lbl.grid(column=1, row=1)
 
         convert_btn = Button(self.tab1, text='Конвертировать', command=self.convert_button_clicked)
         convert_btn.grid(column=2, row=0)
+
+        # TAB 2
+        # ADD COMPONENTS
+        lbl1 = Label(self.tab2, text='Валюта')
+        lbl1.grid(column=0, row=0)
+
+        currency_combo3 = ttk.Combobox(self.tab2, width=25, textvariable=self.currency3_name)
+        currency_combo3['values'] = [currency.name for currency in self.currencies]
+        currency_combo3.grid(column=0, row=1)
 
         # CREATE MATPLOTLIB CANVAS
         matplotlib.use('TkAgg')
