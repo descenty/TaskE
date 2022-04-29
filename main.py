@@ -9,7 +9,6 @@ import xml.dom.minidom
 def main():
     currencies = parse_currencies()
     tkinter_manager = TkinterManager(currencies)
-    tkinter_manager.create_window()
 
 
 def parse_currencies():
