@@ -1,7 +1,8 @@
-import datetime
+from currencies_manager import *
 from tkinter import *
 import tkinter.ttk as ttk
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from currency import *
@@ -16,7 +17,7 @@ quarters = ['01.01.#-31.03.#', '01.04.#-30.06.#', '01.07.#-30.09.#', '01.10.#-31
 
 class TkinterManager:
 
-    def __init__(self, currencies: list[Currency]):
+    def __init__(self):
         self.window = None
         self.tab1 = None
         self.tab2 = None
@@ -29,8 +30,10 @@ class TkinterManager:
 
         self.window_size1 = '650x200'
         self.window_size2 = '650x450'
-        self.currencies = currencies
         self.tab_index = 0
+
+        # PARSE CURRENCIES
+        self.currencies = CurrenciesManager.parse_currencies_by_date(datetime.date.today())
 
         # WINDOW PROPERTIES
         self.window = Tk()
@@ -81,11 +84,11 @@ class TkinterManager:
         lbl1 = Label(self.tab2, text='Валюта')
         lbl1.grid(column=0, row=0, pady=10)
 
-        currency_combo3 = ttk.Combobox(self.tab2, width=25, textvariable=self.currency3_name)
+        currency_combo3 = ttk.Combobox(self.tab2, width=25, state='readonly', textvariable=self.currency3_name)
         currency_combo3['values'] = [currency.name for currency in self.currencies]
         currency_combo3.grid(column=0, row=1)
 
-        draw_graph_btn = Button(self.tab2, text='Построить график', command=self.draw_graph)
+        draw_graph_btn = Button(self.tab2, text='Построить график', command=self.draw_graph_btn_clicked)
         draw_graph_btn.grid(column=0, row=4)
 
         lbl2 = Label(self.tab2, text='Период')
@@ -113,36 +116,36 @@ class TkinterManager:
         date_today = datetime.date.today()
         isocalendar = datetime.date.today().isocalendar()
 
-        week_periods: list[(datetime.date, datetime.date)] = \
+        self.week_periods: list[(datetime.date, datetime.date)] = \
             [((date_today - datetime.timedelta(days=isocalendar.weekday + 7 * x - 1)),
               (date_today - datetime.timedelta(days=7 * x))) for x in range(4)]
 
-        month_periods: list[(datetime.date, datetime.date)] = \
+        self.month_periods: list[(datetime.date, datetime.date)] = \
             [(date_today.replace(month=date_today.month - x, day=1),
               (date_today.replace(month=date_today.month - x + 1, day=1) -
                datetime.timedelta(days=1))) for x in range(4)]
 
-        quarter_periods = \
+        self.quarter_periods = \
             [quarters[(date_today.month - 1) // 3 - x]
                  .replace('#', str(date_today.year if (date_today.month - 1) // 3 - x > 0 else date_today.year - 1))
                  .split('-') for x in range(4)]
 
-        quarter_periods: list[(datetime.date, datetime.date)] = \
+        self.uarter_periods: list[(datetime.date, datetime.date)] = \
             [(datetime.datetime.strptime(x[0], '%d.%m.%Y'), datetime.datetime.strptime(x[1], '%d.%m.%Y'))
-             for x in quarter_periods]
+             for x in self.quarter_periods]
 
-        year_periods: list[(datetime.date, datetime.date)] = \
+        self.year_periods: list[(datetime.date, datetime.date)] = \
             [(datetime.datetime.strptime(f'01.01.{date_today.year - x}', '%d.%m.%Y'),
               datetime.datetime.strptime(f'31.12.{date_today.year - x}', '%d.%m.%Y')) for x in range(4)]
 
         # PERIOD COMBOS
         week_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
         week_combo['values'] = ['{}-{}'.format(x[0].strftime('%d.%m.%Y'), x[1].strftime('%d.%m.%Y')) for x in
-                                week_periods]
+                                self.week_periods]
         week_combo.grid(column=2, row=1)
 
         month_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in month_periods]
+        month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in self.month_periods]
 
         quarter_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
         quarter_combo['values'] = \
@@ -151,28 +154,43 @@ class TkinterManager:
              for x in range(4)]
 
         year_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        year_combo['values'] = [x[0].year for x in year_periods]
+        year_combo['values'] = [x[0].year for x in self.year_periods]
 
         self.graph_period_combos = [week_combo, month_combo, quarter_combo, year_combo]
 
         # CREATE MATPLOTLIB CANVAS
         matplotlib.use('TkAgg')
-        figure = Figure(figsize=(6, 2), dpi=100)
-        self.plot = figure.add_subplot(1, 1, 1)
-        canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg(figure, master=self.tab2)
-        canvas.get_tk_widget().grid(row=5, column=0, columnspan=3, padx=20, pady=20)
+        self.figure = plt.figure(figsize=(6, 2), dpi=100)
+        self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg(self.figure, master=self.tab2)
+        self.plot_widget = self.canvas.get_tk_widget()
 
-        self.draw_graph()
         self.window.mainloop()
 
     def convert_button_clicked(self):
         currency1: Currency = [x for x in self.currencies if x.name == self.currency1_name.get()][0]
         currency2: Currency = [x for x in self.currencies if x.name == self.currency2_name.get()][0]
         self.output_text.set(str(round((currency1.value / currency2.value) * float(self.input_text.get()), 2)))
-        print('huy')
 
-    def draw_graph(self):
-        self.plot.plot(['январь', 'февраль', 'март', 'апрель'], [1, 2, 3, 4])
+    def draw_graph_btn_clicked(self):
+        match self.graph_period.get():
+            case 0:
+                self.draw_graph(
+                    dict(zip(TkinterManager.get_days_in_period(self.week_periods[self.graph_period.get()]), CurrenciesManager.parse_currency_at_period([x.char_code for x in self.currencies if x.name == self.currency3_name.get()][0], self.week_periods[self.graph_period.get()], 1))))
+            case 1:
+                pass
+            case 2:
+                pass
+            case 3:
+                pass
+
+    def draw_graph(self, keys_values: dict):
+        ## I NEED TO KNOW HOW TO UPDATE GRAPH
+        print(keys_values.keys(), keys_values.values())
+        self.figure.clear()
+        plt.plot(keys_values.keys(), keys_values.values())
+        self.canvas.draw()
+        plt.grid()
+        self.plot_widget.grid(row=5, column=0, columnspan=3, padx=20, pady=20)
 
     def resize_window(self, event):
         self.window.geometry(self.window_size1 if self.tab_index % 2 == 0 else self.window_size2)
@@ -182,3 +200,12 @@ class TkinterManager:
         [combo.grid_forget() for combo in self.graph_period_combos]
         self.graph_period_combos[self.graph_period.get()].grid(column=2, row=self.graph_period.get() + 1)
         print(self.graph_period.get())
+
+    @staticmethod
+    def get_days_in_period(period: tuple[datetime.date, datetime.date]) -> list[str]:
+        period = list(period)
+        days = []
+        while (period[1] - period[0]).days != -1:
+            days.append(period[0].strftime('%d/%m'))
+            period[0] += datetime.timedelta(days=1)
+        return days
