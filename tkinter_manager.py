@@ -1,3 +1,4 @@
+import datetime
 from tkinter import *
 import tkinter.ttk as ttk
 import matplotlib
@@ -5,7 +6,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from currency import *
 
-months = ["янв", "фев", "март", "апр", "май", "июнь", "июль", "авг", "сен", "окт", "ноя", "дек"]
+months = ["январь", "февраль", "март",
+          "апрель", "май", "июнь",
+          "июль", "август", "сентябрь",
+          "октябрь", "ноябрь", "декабрь"]
+
+quarters = ['01.01.#-31.03.#', '01.04.#-30.06.#', '01.07.#-30.09.#', '01.10.#-31.12.#']
 
 
 class TkinterManager:
@@ -21,15 +27,16 @@ class TkinterManager:
         self.currency_combo2 = None
         self.plot = None
 
-        self.window_size1 = (650, 250)
-        self.window_size2 = (650, 500)
+        self.window_size1 = '650x200'
+        self.window_size2 = '650x450'
         self.currencies = currencies
         self.tab_index = 0
 
         # WINDOW PROPERTIES
         self.window = Tk()
         self.window.title('Конвертер валют')
-        self.window.geometry('650x250')
+        self.window.geometry(self.window_size1)
+        self.window.resizable(False, False)
 
         # INIT VARIABLES
         self.currency1_name = StringVar()
@@ -52,11 +59,11 @@ class TkinterManager:
 
         # TAB 1
         # ADD COMPONENTS
-        currency_combo1 = ttk.Combobox(self.tab1, width=25, textvariable=self.currency1_name)
+        currency_combo1 = ttk.Combobox(self.tab1, width=25, state='readonly', textvariable=self.currency1_name)
         currency_combo1['values'] = [currency.name for currency in self.currencies]
         currency_combo1.grid(column=0, row=0, padx=20, pady=20)
 
-        currency_combo2 = ttk.Combobox(self.tab1, width=25, textvariable=self.currency2_name)
+        currency_combo2 = ttk.Combobox(self.tab1, width=25, state='readonly', textvariable=self.currency2_name)
         currency_combo2['values'] = [currency.name for currency in self.currencies]
         currency_combo2.grid(column=0, row=1)
 
@@ -102,18 +109,49 @@ class TkinterManager:
         lbl3 = Label(self.tab2, text='Выбор периода')
         lbl3.grid(column=2, row=0)
 
-        week_combo = ttk.Combobox(self.tab2, width=15, textvariable='')
-        week_combo['values'] = [currency.name for currency in self.currencies]
+        # GET TIME PERIODS
+        date_today = datetime.date.today()
+        isocalendar = datetime.date.today().isocalendar()
+
+        week_periods: list[(datetime.date, datetime.date)] = \
+            [((date_today - datetime.timedelta(days=isocalendar.weekday + 7 * x - 1)),
+              (date_today - datetime.timedelta(days=7 * x))) for x in range(4)]
+
+        month_periods: list[(datetime.date, datetime.date)] = \
+            [(date_today.replace(month=date_today.month - x, day=1),
+              (date_today.replace(month=date_today.month - x + 1, day=1) -
+               datetime.timedelta(days=1))) for x in range(4)]
+
+        quarter_periods = \
+            [quarters[(date_today.month - 1) // 3 - x]
+                 .replace('#', str(date_today.year if (date_today.month - 1) // 3 - x > 0 else date_today.year - 1))
+                 .split('-') for x in range(4)]
+
+        quarter_periods: list[(datetime.date, datetime.date)] = \
+            [(datetime.datetime.strptime(x[0], '%d.%m.%Y'), datetime.datetime.strptime(x[1], '%d.%m.%Y'))
+             for x in quarter_periods]
+
+        year_periods: list[(datetime.date, datetime.date)] = \
+            [(datetime.datetime.strptime(f'01.01.{date_today.year - x}', '%d.%m.%Y'),
+              datetime.datetime.strptime(f'31.12.{date_today.year - x}', '%d.%m.%Y')) for x in range(4)]
+
+        # PERIOD COMBOS
+        week_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
+        week_combo['values'] = ['{}-{}'.format(x[0].strftime('%d.%m.%Y'), x[1].strftime('%d.%m.%Y')) for x in
+                                week_periods]
         week_combo.grid(column=2, row=1)
 
-        month_combo = ttk.Combobox(self.tab2, width=15, textvariable='')
-        month_combo['values'] = [currency.name for currency in self.currencies]
+        month_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
+        month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in month_periods]
 
-        quarter_combo = ttk.Combobox(self.tab2, width=15, textvariable='')
-        quarter_combo['values'] = [currency.name for currency in self.currencies]
+        quarter_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
+        quarter_combo['values'] = \
+            [f'{range(1, 5)[(date_today.month - 1) // 3 - x]} ' \
+             f'квартал {date_today.year if (date_today.month - 1) // 3 - x + 1 > 0 else date_today.year - 1}'
+             for x in range(4)]
 
-        year_combo = ttk.Combobox(self.tab2, width=15, textvariable='')
-        year_combo['values'] = [currency.name for currency in self.currencies]
+        year_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
+        year_combo['values'] = [x[0].year for x in year_periods]
 
         self.graph_period_combos = [week_combo, month_combo, quarter_combo, year_combo]
 
@@ -137,14 +175,10 @@ class TkinterManager:
         self.plot.plot(['январь', 'февраль', 'март', 'апрель'], [1, 2, 3, 4])
 
     def resize_window(self, event):
-        if self.tab_index % 2 == 0:
-            self.window.geometry('{}x{}'.format(self.window_size1[0], self.window_size1[1]))
-        else:
-            self.window.geometry('{}x{}'.format(self.window_size2[0], self.window_size2[1]))
+        self.window.geometry(self.window_size1 if self.tab_index % 2 == 0 else self.window_size2)
         self.tab_index += 1
 
     def on_graph_period_change(self, index, value, op):
         [combo.grid_forget() for combo in self.graph_period_combos]
         self.graph_period_combos[self.graph_period.get()].grid(column=2, row=self.graph_period.get() + 1)
         print(self.graph_period.get())
-

@@ -1,5 +1,3 @@
-import datetime
-
 from tkinter_manager import *
 from currency import *
 import urllib.request
