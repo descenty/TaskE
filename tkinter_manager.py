@@ -1,7 +1,8 @@
+import datetime
+
 from currencies_manager import *
 from tkinter import *
 import tkinter.ttk as ttk
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -118,7 +119,8 @@ class TkinterManager:
 
         self.week_periods: list[(datetime.date, datetime.date)] = \
             [((date_today - datetime.timedelta(days=isocalendar.weekday + 7 * x - 1)),
-              (date_today - datetime.timedelta(days=7 * x))) for x in range(4)]
+              (date_today + datetime.timedelta(days=7 - isocalendar.weekday) - datetime.timedelta(days=7 * x))) for x in range(4)]
+
 
         self.month_periods: list[(datetime.date, datetime.date)] = \
             [(date_today.replace(month=date_today.month - x, day=1),
@@ -130,7 +132,7 @@ class TkinterManager:
                  .replace('#', str(date_today.year if (date_today.month - 1) // 3 - x > 0 else date_today.year - 1))
                  .split('-') for x in range(4)]
 
-        self.uarter_periods: list[(datetime.date, datetime.date)] = \
+        self.quarter_periods: list[(datetime.date, datetime.date)] = \
             [(datetime.datetime.strptime(x[0], '%d.%m.%Y'), datetime.datetime.strptime(x[1], '%d.%m.%Y'))
              for x in self.quarter_periods]
 
@@ -146,23 +148,27 @@ class TkinterManager:
 
         month_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
         month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in self.month_periods]
+        month_combo.grid(column=2, row=2)
 
         quarter_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
         quarter_combo['values'] = \
             [f'{range(1, 5)[(date_today.month - 1) // 3 - x]} ' \
              f'квартал {date_today.year if (date_today.month - 1) // 3 - x + 1 > 0 else date_today.year - 1}'
              for x in range(4)]
+        quarter_combo.grid(column=2, row=3)
 
         year_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
         year_combo['values'] = [x[0].year for x in self.year_periods]
+        year_combo.grid(column=2, row=4)
 
         self.graph_period_combos = [week_combo, month_combo, quarter_combo, year_combo]
 
         # CREATE MATPLOTLIB CANVAS
-        matplotlib.use('TkAgg')
-        self.figure = plt.figure(figsize=(6, 2), dpi=100)
-        self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg(self.figure, master=self.tab2)
+        figure = Figure(figsize=(6, 2), dpi=100)
+        self.f_plot = figure.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(figure, self.tab2)
         self.plot_widget = self.canvas.get_tk_widget()
+        self.plot_widget.grid(row=6, column=0, columnspan=3, padx=20, pady=20)
 
         self.window.mainloop()
 
@@ -184,13 +190,10 @@ class TkinterManager:
                 pass
 
     def draw_graph(self, keys_values: dict):
-        ## I NEED TO KNOW HOW TO UPDATE GRAPH
         print(keys_values.keys(), keys_values.values())
-        self.figure.clear()
-        plt.plot(keys_values.keys(), keys_values.values())
+        self.f_plot.clear()
+        self.f_plot.plot(keys_values.keys(), keys_values.values())
         self.canvas.draw()
-        plt.grid()
-        self.plot_widget.grid(row=5, column=0, columnspan=3, padx=20, pady=20)
 
     def resize_window(self, event):
         self.window.geometry(self.window_size1 if self.tab_index % 2 == 0 else self.window_size2)
