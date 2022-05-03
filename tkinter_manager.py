@@ -1,5 +1,5 @@
-import datetime
-
+import urllib.error
+import time
 from currencies_manager import *
 from tkinter import *
 import tkinter.ttk as ttk
@@ -30,11 +30,17 @@ class TkinterManager:
         self.plot = None
 
         self.window_size1 = '650x200'
-        self.window_size2 = '650x450'
+        self.window_size2 = '750x450'
         self.tab_index = 0
 
         # PARSE CURRENCIES
-        self.currencies = CurrenciesManager.parse_currencies_by_date(datetime.date.today())
+        while True:
+            try:
+                self.currencies = CurrenciesManager.parse_currencies_by_date(datetime.date.today())
+                break
+            except urllib.error.URLError:
+                print('NO CONNECTION')
+                time.sleep(5)
 
         # WINDOW PROPERTIES
         self.window = Tk()
@@ -51,6 +57,11 @@ class TkinterManager:
 
         self.graph_period = IntVar()
         self.graph_period.trace('w', self.on_graph_period_change)
+
+        self.week_period = StringVar()
+        self.month_period = StringVar()
+        self.quarter_period = StringVar()
+        self.year_period = StringVar()
 
         # ADD TABS
         tab_control = ttk.Notebook(self.window)
@@ -121,7 +132,6 @@ class TkinterManager:
             [((date_today - datetime.timedelta(days=isocalendar.weekday + 7 * x - 1)),
               (date_today + datetime.timedelta(days=7 - isocalendar.weekday) - datetime.timedelta(days=7 * x))) for x in range(4)]
 
-
         self.month_periods: list[(datetime.date, datetime.date)] = \
             [(date_today.replace(month=date_today.month - x, day=1),
               (date_today.replace(month=date_today.month - x + 1, day=1) -
@@ -141,58 +151,78 @@ class TkinterManager:
               datetime.datetime.strptime(f'31.12.{date_today.year - x}', '%d.%m.%Y')) for x in range(4)]
 
         # PERIOD COMBOS
-        week_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        week_combo['values'] = ['{}-{}'.format(x[0].strftime('%d.%m.%Y'), x[1].strftime('%d.%m.%Y')) for x in
+        self.week_combo = ttk.Combobox(self.tab2, width=20, state='readonly')
+        self.week_combo['values'] = ['{}-{}'.format(x[0].strftime('%d.%m.%Y'), x[1].strftime('%d.%m.%Y')) for x in
                                 self.week_periods]
-        week_combo.grid(column=2, row=1)
+        self.week_combo.grid(column=2, row=1)
 
-        month_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in self.month_periods]
-        month_combo.grid(column=2, row=2)
+        self.month_combo = ttk.Combobox(self.tab2, width=20, state='readonly')
+        self.month_combo['values'] = [f'{months[x[0].month - 1]} {x[0].year}' for x in self.month_periods]
 
-        quarter_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        quarter_combo['values'] = \
+        self.quarter_combo = ttk.Combobox(self.tab2, width=20, state='readonly')
+        self.quarter_combo['values'] = \
             [f'{range(1, 5)[(date_today.month - 1) // 3 - x]} ' \
              f'квартал {date_today.year if (date_today.month - 1) // 3 - x + 1 > 0 else date_today.year - 1}'
              for x in range(4)]
-        quarter_combo.grid(column=2, row=3)
 
-        year_combo = ttk.Combobox(self.tab2, width=20, state='readonly', textvariable='')
-        year_combo['values'] = [x[0].year for x in self.year_periods]
-        year_combo.grid(column=2, row=4)
+        self.year_combo = ttk.Combobox(self.tab2, width=20, state='readonly')
+        self.year_combo['values'] = [x[0].year for x in self.year_periods]
 
-        self.graph_period_combos = [week_combo, month_combo, quarter_combo, year_combo]
+        self.graph_period_combos = [self.week_combo, self.month_combo, self.quarter_combo, self.year_combo]
 
         # CREATE MATPLOTLIB CANVAS
-        figure = Figure(figsize=(6, 2), dpi=100)
+        figure = Figure(figsize=(9, 3), dpi=75)
         self.f_plot = figure.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(figure, self.tab2)
         self.plot_widget = self.canvas.get_tk_widget()
-        self.plot_widget.grid(row=6, column=0, columnspan=3, padx=20, pady=20)
+        self.plot_widget.grid(row=6, column=0, columnspan=3, rowspan=2, padx=20, pady=20)
 
         self.window.mainloop()
 
     def convert_button_clicked(self):
+        if self.currency1_name.get() == '' or self.currency2_name.get() == '':
+            print('НЕ ВЫБРАНЫ ВАЛЮТЫ')
+            return
         currency1: Currency = [x for x in self.currencies if x.name == self.currency1_name.get()][0]
         currency2: Currency = [x for x in self.currencies if x.name == self.currency2_name.get()][0]
         self.output_text.set(str(round((currency1.value / currency2.value) * float(self.input_text.get()), 2)))
 
     def draw_graph_btn_clicked(self):
+        if self.currency3_name.get() == '':
+            print('НЕ ВЫБРАНА ВАЛЮТА')
+            return
+        currency_char_code = [x.char_code for x in self.currencies if x.name == self.currency3_name.get()][0]
         match self.graph_period.get():
             case 0:
                 self.draw_graph(
-                    dict(zip(TkinterManager.get_days_in_period(self.week_periods[self.graph_period.get()]), CurrenciesManager.parse_currency_at_period([x.char_code for x in self.currencies if x.name == self.currency3_name.get()][0], self.week_periods[self.graph_period.get()], 1))))
+                    dict(zip(TkinterManager.get_days_in_period(self.week_periods[self.week_combo.current()], 1),
+                             CurrenciesManager.parse_currency_at_period(currency_char_code, self.week_periods[self.week_combo.current()], 1))), currency_char_code)
             case 1:
-                pass
+                self.draw_graph(
+                    dict(zip(TkinterManager.get_days_in_period(self.month_periods[self.month_combo.current()], 3),
+                             CurrenciesManager.parse_currency_at_period(currency_char_code,
+                                                                        self.month_periods[self.month_combo.current()],
+                                                                        3))), currency_char_code)
             case 2:
-                pass
+                self.draw_graph(
+                    dict(zip(TkinterManager.get_days_in_period(self.quarter_periods[self.quarter_combo.current()], 7),
+                             CurrenciesManager.parse_currency_at_period(currency_char_code,
+                                                                        self.quarter_periods[self.quarter_combo.current()], 7))),
+                    currency_char_code)
             case 3:
-                pass
+                self.draw_graph(
+                    dict(zip(TkinterManager.get_months_in_period(self.year_periods[self.year_combo.current()], 31),
+                             CurrenciesManager.parse_currency_at_period(currency_char_code,
+                                                                        self.year_periods[
+                                                                            self.year_combo.current()], 31))),
+                    currency_char_code)
 
-    def draw_graph(self, keys_values: dict):
+    def draw_graph(self, keys_values: dict, currency_char_code: str):
         print(keys_values.keys(), keys_values.values())
         self.f_plot.clear()
-        self.f_plot.plot(keys_values.keys(), keys_values.values())
+        self.f_plot.set_title(f'График изменения курса {currency_char_code}')
+        self.f_plot.grid()
+        self.f_plot.plot(keys_values.keys(), keys_values.values(), marker='.')
         self.canvas.draw()
 
     def resize_window(self, event):
@@ -205,10 +235,22 @@ class TkinterManager:
         print(self.graph_period.get())
 
     @staticmethod
-    def get_days_in_period(period: tuple[datetime.date, datetime.date]) -> list[str]:
+    def get_days_in_period(period: tuple[datetime.date, datetime.date], delta_day: int) -> list[str]:
         period = list(period)
         days = []
-        while (period[1] - period[0]).days != -1:
-            days.append(period[0].strftime('%d/%m'))
-            period[0] += datetime.timedelta(days=1)
+        while (period[1] - period[0]).days >= 0:
+            days.append(period[0].strftime('%d.%m'))
+            period[0] += datetime.timedelta(days=delta_day)
+        print(days)
         return days
+
+
+    @staticmethod
+    def get_months_in_period(period: tuple[datetime.date, datetime.date], day_delta: int) -> list[str]:
+        period = list(period)
+        values = list()
+        while (period[1] - period[0]).days >= 0:
+            values.append(period[0].strftime('%m'))
+            period[0] += datetime.timedelta(days=day_delta)
+        print(values)
+        return values
