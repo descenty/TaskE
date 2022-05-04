@@ -36,7 +36,9 @@ class TkinterManager:
         # PARSE CURRENCIES
         while True:
             try:
-                self.currencies = CurrenciesManager.parse_currencies_by_date(datetime.date.today())
+                self.currencies = []
+                self.currencies.append(Currency('Российский рубль', 'RUB', 1))
+                self.currencies.extend(CurrenciesManager.parse_currencies_by_date(datetime.date.today()))
                 break
             except urllib.error.URLError:
                 print('NO CONNECTION')
@@ -83,6 +85,7 @@ class TkinterManager:
         currency_combo2.grid(column=0, row=1)
 
         input_box1 = Entry(self.tab1, textvariable=self.input_text)
+        self.input_text.set('1')
         input_box1.grid(column=1, row=0, padx=20, pady=20)
 
         output_lbl = Label(self.tab1, textvariable=self.output_text)
@@ -188,7 +191,7 @@ class TkinterManager:
             return
         currency1: Currency = [x for x in self.currencies if x.name == self.currency1_name.get()][0]
         currency2: Currency = [x for x in self.currencies if x.name == self.currency2_name.get()][0]
-        self.output_text.set(str(round((currency1.value / currency2.value) * float(self.input_text.get()), 2)))
+        self.output_text.set(str(round((currency1.value / currency2.value) * float(self.input_text.get()), 4)))
 
     def draw_graph_btn_clicked(self):
         if self.currency3_name.get() == '':

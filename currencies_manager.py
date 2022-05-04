@@ -17,7 +17,7 @@ class CurrenciesManager:
         for node in node_array:
             children_values = [x.childNodes[0].nodeValue for x in node.childNodes]
             currency = Currency(children_values[3], children_values[1],
-                                round(float(children_values[4].replace(',', '.')) / int(children_values[2]), 2))
+                                round(float(children_values[4].replace(',', '.')) / int(children_values[2]), 4))
             currencies.append(currency)
         return currencies
 
