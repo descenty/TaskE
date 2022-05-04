@@ -26,10 +26,10 @@ class CurrenciesManager:
         period = list(period)
         values = []
         while (period[1] - period[0]).days >= 0:
-            print((period[1] - period[0]).days, values)
             if len([x.value for x in CurrenciesManager.parse_currencies_by_date(period[0]) if x.char_code == currency_char_code]) > 0:
                 values.append([x.value for x in CurrenciesManager.parse_currencies_by_date(period[0]) if x.char_code == currency_char_code][0])
             else:
                 values.append(values[-1])
+            print((period[1] - period[0]).days, values)
             period[0] += datetime.timedelta(days=delta_day)
         return values
