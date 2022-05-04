@@ -183,6 +183,9 @@ class TkinterManager:
         if self.currency1_name.get() == '' or self.currency2_name.get() == '':
             print('НЕ ВЫБРАНЫ ВАЛЮТЫ')
             return
+        if self.input_text.get() == '' or not self.input_text.get().isdigit():
+            print('ВВЕДЕНЫ НЕПРАВИЛЬНЫЕ ДАННЫЕ')
+            return
         currency1: Currency = [x for x in self.currencies if x.name == self.currency1_name.get()][0]
         currency2: Currency = [x for x in self.currencies if x.name == self.currency2_name.get()][0]
         self.output_text.set(str(round((currency1.value / currency2.value) * float(self.input_text.get()), 2)))
