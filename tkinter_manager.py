@@ -194,22 +194,34 @@ class TkinterManager:
         currency_char_code = [x.char_code for x in self.currencies if x.name == self.currency3_name.get()][0]
         match self.graph_period.get():
             case 0:
+                if self.week_combo.current() == -1:
+                    print('НЕ ВЫБРАНА НЕДЕЛЯ')
+                    return
                 self.draw_graph(
                     dict(zip(TkinterManager.get_days_in_period(self.week_periods[self.week_combo.current()], 1),
                              CurrenciesManager.parse_currency_at_period(currency_char_code, self.week_periods[self.week_combo.current()], 1))), currency_char_code)
             case 1:
+                if self.month_combo.current() == -1:
+                    print('НЕ ВЫБРАН МЕСЯЦ')
+                    return
                 self.draw_graph(
                     dict(zip(TkinterManager.get_days_in_period(self.month_periods[self.month_combo.current()], 3),
                              CurrenciesManager.parse_currency_at_period(currency_char_code,
                                                                         self.month_periods[self.month_combo.current()],
                                                                         3))), currency_char_code)
             case 2:
+                if self.quarter_combo.current() == -1:
+                    print('НЕ ВЫБРАН КВАРТАЛ')
+                    return
                 self.draw_graph(
                     dict(zip(TkinterManager.get_days_in_period(self.quarter_periods[self.quarter_combo.current()], 7),
                              CurrenciesManager.parse_currency_at_period(currency_char_code,
                                                                         self.quarter_periods[self.quarter_combo.current()], 7))),
                     currency_char_code)
             case 3:
+                if self.year_combo.current() == -1:
+                    print('НЕ ВЫБРАН ГОД')
+                    return
                 self.draw_graph(
                     dict(zip(TkinterManager.get_months_in_period(self.year_periods[self.year_combo.current()], 31),
                              CurrenciesManager.parse_currency_at_period(currency_char_code,
@@ -232,7 +244,7 @@ class TkinterManager:
     def on_graph_period_change(self, index, value, op):
         [combo.grid_forget() for combo in self.graph_period_combos]
         self.graph_period_combos[self.graph_period.get()].grid(column=2, row=self.graph_period.get() + 1)
-        print(self.graph_period.get())
+        # print(self.graph_period.get())
 
     @staticmethod
     def get_days_in_period(period: tuple[datetime.date, datetime.date], delta_day: int) -> list[str]:
@@ -241,9 +253,8 @@ class TkinterManager:
         while (period[1] - period[0]).days >= 0:
             days.append(period[0].strftime('%d.%m'))
             period[0] += datetime.timedelta(days=delta_day)
-        print(days)
+        # print(days)
         return days
-
 
     @staticmethod
     def get_months_in_period(period: tuple[datetime.date, datetime.date], day_delta: int) -> list[str]:
@@ -252,5 +263,5 @@ class TkinterManager:
         while (period[1] - period[0]).days >= 0:
             values.append(period[0].strftime('%m'))
             period[0] += datetime.timedelta(days=day_delta)
-        print(values)
+        # print(values)
         return values
